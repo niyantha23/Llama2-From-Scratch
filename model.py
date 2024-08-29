@@ -23,6 +23,28 @@ class ModelArgs:
 
     device:str=None
 
+class Transformer(nn.Module):
+
+    def __init__(self,args:ModelArgs)-> None:
+        super().__init__()
+
+        assert args.vocab_size != -1, "Vocab size is not set"
+
+        self.args=args
+        self.vocab_size=args.vocab_size
+        self.n_layers=args.n_layers
+        self.tok_embeddings=nn.Embedding(self.vocab_size,args.dim)
+
+        self.layers=nn.ModuleList()
+        for _ in range(args.n_layers):
+            self.layers.append(EncoderBlock(args))
+        
+        self.norm=RMSNorm(args.dim,eps=args.norm_eps)
+        self.output=nn.Linear(args.dim,self.vocab_size,bias=False)
+
+        self.freqs_complex = precompute_theta_pos_frequencies(self.args.dim // self.args.n_heads,self.args.max_seq_len*2,device=self.args.device)
+
+    
 
 
 
