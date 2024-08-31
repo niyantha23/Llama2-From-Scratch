@@ -25,6 +25,28 @@ class ModelArgs:
     device: str = None
 
 
+def precompute_theta_pos_frequencies(
+    head_dim: int, seq_len: int, device: str, theta: float = 10000.0
+):
+    # dim of embedding should be even as per paper
+    assert head_dim % 2 == 0, "Dimension must be div by 2"
+
+    # formula theta_i=10000^(-2(i-1)/dim) for i =[1,2,... dim/2]
+    # shape:(head_dim/2)
+    theta_numerator = torch.arange(0, head_dim, 2).float()
+    theta = 1.0 / (theta ** (theta_numerator / head_dim)).to(device)
+
+    # Position params (m)
+    # shape: (seq_len)
+
+    m = torch.arange(seq_len, device=device)
+    # multiply each theta by each position
+    freqs = torch.outer(m, theta).float()
+    # compute complex numbers in polar form c= R*exp(i*m*theta)
+    freqs_complex = torch.polar(torch.ones_like(freqs), freqs)
+    return freqs_complex
+
+
 class Transformer(nn.Module):
 
     def __init__(self, args: ModelArgs) -> None:
