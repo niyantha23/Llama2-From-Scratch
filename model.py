@@ -96,24 +96,24 @@ class SelfAttention(nn.Module):
         super().__init__()
 
         # n.o of heads for key and values
-        self.n_kv_heads = (
-            args.n_heads if args.n_kv_heads is None else args.n_kv_heads
-        )
+        self.n_kv_heads = args.n_heads if args.n_kv_heads is None else args.n_kv_heads
+    
         # n.o of heads for queries.
         self.n_heads_q = args.n_heads
         # how many times heads of k and v should be repated to match heads of q
         self.n_rep = self.n_heads_q // self.n_kv_heads
         # dim of each head
         self.head_dim = args.dim // args.n_heads
-
-        self.wq = nn.Linear(args.dim, args.n_heads * self.head_dim, bias=False)
+        # print(self.head_dim)
+        # print(self.n_kv_heads)
+        self.wq = nn.Linear(args.dim, args.n_heads*self.head_dim, bias=False)
         self.wk = nn.Linear(
-            args.dim, args.n_kv_heads * self.head_dim, bias=False
+            args.dim, self.n_kv_heads*self.head_dim, bias=False
         )
         self.wv = nn.Linear(
-            args.dim, args.n_kv_heads * self.head_dim, bias=False
+            args.dim, self.n_kv_heads*self.head_dim, bias=False
         )
-        self.wo = nn.Linear(args.n_heads, args.head_dim, args.dim, bias=False)
+        self.wo = nn.Linear(args.n_heads*self.head_dim, args.dim, bias=False)
 
         self.cache_k = torch.zeros(
             (
@@ -155,8 +155,8 @@ class SelfAttention(nn.Module):
         self.cache_v[:batch_size, start_pos : start_pos + seq_len] = xv
 
         # Retrive all caches keys and val
-        keys = self.cache_k[:batch_size, 0 : start_pos + seq_len]
-        values = self.cache_v[:batch_size, 0 : start_pos + seq_len]
+        keys = self.cache_k[:batch_size, : start_pos + seq_len]
+        values = self.cache_v[:batch_size,  : start_pos + seq_len]
 
         # repeat heads
         keys = repeat_kv(keys, self.n_rep)
@@ -189,8 +189,8 @@ class FeedForward(nn.Module):
             hidden_dim = int(args.ffn_dim_multiplier * hidden_dim)
 
         # round hidden dim to nearest numtilple_of
-        hidden = args.multiple_of * (
-            (hidden + args.multiple_of - 1) // args.multiple_of
+        hidden_dim = args.multiple_of * (
+            (hidden_dim + args.multiple_of - 1) // args.multiple_of
         )
 
         self.w1 = nn.Linear(args.dim, hidden_dim, bias=False)
@@ -254,7 +254,7 @@ class Transformer(nn.Module):
         self.freqs_complex = precompute_theta_pos_frequencies(
             self.args.dim // self.args.n_heads,
             self.args.max_seq_len * 2,
-            device=self.args.device,
+            device=self.args.device
         )
 
     def forward(self, tokens: torch.Tensor, start_pos: int):
